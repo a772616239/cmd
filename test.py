@@ -42,6 +42,7 @@ class Agent(threading.Thread):
                 ],
                 stream=False,
             )
+            print(f"API 响应: {response}")  # 打印完整响应
             return response.choices[0].message.content
         except Exception as e:
             return f"API 请求失败: {str(e)}"
@@ -50,28 +51,31 @@ class Agent(threading.Thread):
 # 客户服务代理
 class CustomerServiceAgent(Agent):
     def process_message(self, message):
-        if message.startswith("客户请求"):
-            # 调用 DeepSeek API 处理客户请求
-            result = self.call_deepseek_api(message, task="customer_service")
-            return f"{self.name} 处理结果: {result}"
+        print(f"{self.name} 正在处理消息: {message}")  # 打印调试信息
+        # 调用 DeepSeek API 处理客户请求
+        result = self.call_deepseek_api(message, task="customer_service")
+        print(f"{self.name} 处理结果: {result}")  # 打印处理结果
+        return result  # 返回处理结果
 
 
 # 数据分析代理
 class DataAnalysisAgent(Agent):
     def process_message(self, message):
-        if "数据" in message:
-            # 调用 DeepSeek API 进行数据分析
-            result = self.call_deepseek_api(message, task="data_analysis")
-            return f"{self.name} 分析结果: {result}"
+        print(f"{self.name} 正在处理消息: {message}")  # 打印调试信息
+        # 调用 DeepSeek API 进行数据分析
+        result = self.call_deepseek_api(message, task="data_analysis")
+        print(f"{self.name} 分析结果: {result}")  # 打印处理结果
+        return result  # 返回分析结果
 
 
 # 市场营销代理
 class MarketingAgent(Agent):
     def process_message(self, message):
-        if "分析结果" in message:
-            # 调用 DeepSeek API 制定营销策略
-            result = self.call_deepseek_api(message, task="marketing")
-            return f"{self.name} 制定策略: {result}"
+        print(f"{self.name} 正在处理消息: {message}")  # 打印调试信息
+        # 调用 DeepSeek API 制定营销策略
+        result = self.call_deepseek_api(message, task="marketing")
+        print(f"{self.name} 制定策略: {result}")  # 打印处理结果
+        return result  # 返回营销策略
 
 
 # 主程序
@@ -91,13 +95,23 @@ if __name__ == "__main__":
     data_analysis.start()
     marketing.start()
 
-    # 模拟客户请求
-    requests_list = ["客户请求: 查询订单状态", "客户请求: 数据报告", "客户请求: 产品推荐"]
-    for request in requests_list:
+    # 打印代理线程状态
+    print(f"客户服务代理状态: {customer_service.is_alive()}")
+    print(f"数据分析代理状态: {data_analysis.is_alive()}")
+    print(f"市场营销代理状态: {marketing.is_alive()}")
+
+    # 从终端读取一次客户请求
+    request = input("请输入客户请求: ")
+    if request.strip():  # 确保输入不为空
         print(f"发送请求: {request}")
         queue1.put(request)
-        time.sleep(2)  # 模拟请求间隔
 
     # 等待代理完成任务
-    time.sleep(10)
+    time.sleep(10)  # 根据任务复杂度调整等待时间
+
+    # 打印队列状态
+    print(f"queue1 剩余消息: {queue1.qsize()}")
+    print(f"queue2 剩余消息: {queue2.qsize()}")
+    print(f"queue3 剩余消息: {queue3.qsize()}")
+
     print("所有任务完成")
