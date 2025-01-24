@@ -53,74 +53,90 @@ class CustomerServiceAgent(Agent):
     def process_message(self, message):
         print(f"{self.name} 正在处理消息: {message}")  # 打印调试信息
         # 明确职责：处理客户请求
-        ask_description = "进行数据分析"
+        task_description = "处理客户请求"
         
         # 构建新的消息内容
-        self.message2 = "你现在是客服代理，请完善用户的请求，让数据分析同事能够根据任务给出准确的结果:\n" + message
+        self.message2 = "你现在是客服代理，请完善用户的请求，让产品策划同事能够根据任务给出准确的结果:\n" + message
         
-        # 调用 DeepSeek API 进行数据分析
-        result = self.call_deepseek_api(self.message2, ask_description)
+        # 调用 DeepSeek API 进行处理
+        result = self.call_deepseek_api(self.message2, task_description)
         print(f"{self.name} 处理结果: {result}")  # 打印处理结果
-        return {"task": ask_description, "result": result}  # 返回任务描述和结果
+        return {"task": task_description, "result": result}  # 返回任务描述和结果
 
 
-# 数据分析代理
-class DataAnalysisAgent(Agent):
+# 产品策划代理
+class ProductPlanningAgent(Agent):
     def process_message(self, message):
         print(f"{self.name} 正在处理消息: {message}")  # 打印调试信息
-        # 明确职责：进行数据分析
-        task_description = "进行数据分析"
+        # 明确职责：进行产品策划
+        task_description = "进行产品策划"
         
         # 构建新的消息内容
-        self.message2 = "你现在正在进行数据分析，请完善一下客服代理给出的任务:\n" + message["result"]
+        self.message2 = "你现在正在进行产品策划，请根据客服代理给出的任务提出产品设计方案:\n" + message["result"]
         
-        # 调用 DeepSeek API 进行数据分析
+        # 调用 DeepSeek API 进行产品策划
         result = self.call_deepseek_api(self.message2, task_description)
-        print(f"{self.name} 分析结果: {result}")  # 打印处理结果
-        
-        # 返回任务描述和结果
+        print(f"{self.name} 策划结果: {result}")  # 打印处理结果
         return {"task": task_description, "result": result}
 
 
-# 市场营销代理
-class MarketingAgent(Agent):
+# 代码开发代理
+class CodeDevelopmentAgent(Agent):
     def process_message(self, message):
         print(f"{self.name} 正在处理消息: {message}")  # 打印调试信息
-        # 明确职责：制定营销策略
-        task_description = "制定营销策略"
+        # 明确职责：进行代码开发
+        task_description = "进行代码开发"
         
         # 构建新的消息内容
-        self.message2 = "你现在正在制定营销策略，请根据数据分析结果提出建议:\n" + message["result"]
+        self.message2 = "你现在正在进行代码开发，请根据产品策划方案编写代码:\n" + message["result"]
         
-        # 调用 DeepSeek API 制定营销策略t
+        # 调用 DeepSeek API 进行代码开发
         result = self.call_deepseek_api(self.message2, task_description)
-        print(f"{self.name} 制定策略: {result}")  # 打印处理结果
+        print(f"{self.name} 开发结果: {result}")  # 打印处理结果
+        return {"task": task_description, "result": result}
+
+
+# 运行测试代理
+class TestingAgent(Agent):
+    def process_message(self, message):
+        print(f"{self.name} 正在处理消息: {message}")  # 打印调试信息
+        # 明确职责：进行运行测试
+        task_description = "进行运行测试"
         
-        # 返回任务描述和结果
+        # 构建新的消息内容
+        self.message2 = "你现在正在进行运行测试，请根据代码开发结果进行测试并生成测试报告:\n" + message["result"]
+        
+        # 调用 DeepSeek API 进行运行测试
+        result = self.call_deepseek_api(self.message2, task_description)
+        print(f"{self.name} 测试结果: {result}")  # 打印处理结果
         return {"task": task_description, "result": result}
 
 
 # 主程序
 if __name__ == "__main__":
     # 创建消息队列
-    queue1 = queue.Queue()  # 客户服务 -> 数据分析
-    queue2 = queue.Queue()  # 数据分析 -> 市场营销
-    queue3 = queue.Queue()  # 市场营销 -> 结束
+    queue1 = queue.Queue()  # 客户服务 -> 产品策划
+    queue2 = queue.Queue()  # 产品策划 -> 代码开发
+    queue3 = queue.Queue()  # 代码开发 -> 运行测试
+    queue4 = queue.Queue()  # 运行测试 -> 结束
 
     # 创建代理
     customer_service = CustomerServiceAgent("客户服务代理", queue1, queue2)
-    data_analysis = DataAnalysisAgent("数据分析代理", queue2, queue3)
-    marketing = MarketingAgent("市场营销代理", queue3)
+    product_planning = ProductPlanningAgent("产品策划代理", queue2, queue3)
+    code_development = CodeDevelopmentAgent("代码开发代理", queue3, queue4)
+    testing = TestingAgent("运行测试代理", queue4)
 
     # 启动代理
     customer_service.start()
-    data_analysis.start()
-    marketing.start()
+    product_planning.start()
+    code_development.start()
+    testing.start()
 
     # 打印代理线程状态
     print(f"客户服务代理状态: {customer_service.is_alive()}")
-    print(f"数据分析代理状态: {data_analysis.is_alive()}")
-    print(f"市场营销代理状态: {marketing.is_alive()}")
+    print(f"产品策划代理状态: {product_planning.is_alive()}")
+    print(f"代码开发代理状态: {code_development.is_alive()}")
+    print(f"运行测试代理状态: {testing.is_alive()}")
 
     # 从终端读取一次客户请求
     request = input("请输入客户请求: ")
@@ -129,11 +145,12 @@ if __name__ == "__main__":
         queue1.put(request)  # 将客户请求放入队列
 
     # 等待代理完成任务
-    time.sleep(10)  # 根据任务复杂度调整等待时间
+    time.sleep(15)  # 根据任务复杂度调整等待时间
 
     # 打印队列状态
     print(f"queue1 剩余消息: {queue1.qsize()}")
     print(f"queue2 剩余消息: {queue2.qsize()}")
     print(f"queue3 剩余消息: {queue3.qsize()}")
+    print(f"queue4 剩余消息: {queue4.qsize()}")
 
     print("所有任务完成")
