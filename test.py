@@ -14,9 +14,10 @@ class Agent(threading.Thread):
         self.name = name
         self.inbox = inbox  # 接收消息的队列
         self.outbox = outbox  # 发送消息的队列
+        self.running = True  # 控制代理是否继续运行
 
     def run(self):
-        while True:
+        while self.running:
             if not self.inbox.empty():
                 message = self.inbox.get()
                 print(f"{self.name} 收到消息: {message}")
@@ -24,6 +25,10 @@ class Agent(threading.Thread):
                 if self.outbox and result:
                     self.outbox.put(result)  # 将处理结果发送给下一个代理
             time.sleep(1)  # 模拟处理时间
+
+    def stop(self):
+        """停止代理运行"""
+        self.running = False
 
     def process_message(self, message):
         raise NotImplementedError("子类必须实现 process_message 方法")
@@ -84,13 +89,15 @@ class ProductPlanningAgent(Agent):
 class CodeDevelopmentAgent(Agent):
     def process_message(self, message):
         print(f"{self.name} 正在处理消息: {message}")  # 打印调试信息
-        # 明确职责：进行代码开发
-        task_description = "进行代码开发"
+        # 明确职责：进行代码开发或重做
+        if message.get("task") == "代码开发重做":
+            task_description = "代码开发重做"
+            self.message2 = "你现在需要重新开发代码，请根据测试反馈的错误信息进行修改:\n" + message["result"]
+        else:
+            task_description = "进行代码开发"
+            self.message2 = "你现在正在进行代码开发，请根据产品策划方案编写代码，输出命令行可以复制的代码:\n" + message["result"]
         
-        # 构建新的消息内容
-        self.message2 = "你现在正在进行代码开发，请根据产品策划方案编写代码:\n" + message["result"]
-        
-        # 调用 DeepSeek API 进行代码开发
+        # 调用 DeepSeek API 进行代码开发或重做
         result = self.call_deepseek_api(self.message2, task_description)
         print(f"{self.name} 开发结果: {result}")  # 打印处理结果
         return {"task": task_description, "result": result}
@@ -104,12 +111,19 @@ class TestingAgent(Agent):
         task_description = "进行运行测试"
         
         # 构建新的消息内容
-        self.message2 = "你现在正在进行运行测试，请根据代码开发结果进行测试并生成测试报告:\n" + message["result"]
+        self.message2 = "你现在正在进行运行测试，请根据代码开发结果进行运行测试:\n" + message["result"] + "\n代码无误，则返回'通过'，代码有误则返回错误原因"
         
         # 调用 DeepSeek API 进行运行测试
         result = self.call_deepseek_api(self.message2, task_description)
         print(f"{self.name} 测试结果: {result}")  # 打印处理结果
-        return {"task": task_description, "result": result}
+
+        # 检查测试结果是否包含错误
+        if "通过" not in result:
+            print(f"{self.name} 检测到错误，返回给代码开发代理重做。")
+            return {"task": "代码开发重做", "result": result}  # 返回错误信息给代码开发代理
+        else:
+            print(f"{self.name} 测试通过，任务完成。")
+            return None  # 测试通过，不再发送消息
 
 
 # 主程序
@@ -118,13 +132,13 @@ if __name__ == "__main__":
     queue1 = queue.Queue()  # 客户服务 -> 产品策划
     queue2 = queue.Queue()  # 产品策划 -> 代码开发
     queue3 = queue.Queue()  # 代码开发 -> 运行测试
-    queue4 = queue.Queue()  # 运行测试 -> 结束
+    queue4 = queue.Queue()  # 运行测试 -> 代码开发（重做）或结束
 
     # 创建代理
     customer_service = CustomerServiceAgent("客户服务代理", queue1, queue2)
     product_planning = ProductPlanningAgent("产品策划代理", queue2, queue3)
     code_development = CodeDevelopmentAgent("代码开发代理", queue3, queue4)
-    testing = TestingAgent("运行测试代理", queue4)
+    testing = TestingAgent("运行测试代理", queue4, queue3)  # 测试失败时返回给代码开发代理
 
     # 启动代理
     customer_service.start()
@@ -145,7 +159,13 @@ if __name__ == "__main__":
         queue1.put(request)  # 将客户请求放入队列
 
     # 等待代理完成任务
-    time.sleep(15)  # 根据任务复杂度调整等待时间
+    time.sleep(30)  # 根据任务复杂度调整等待时间
+
+    # 停止所有代理
+    customer_service.stop()
+    product_planning.stop()
+    code_development.stop()
+    testing.stop()
 
     # 打印队列状态
     print(f"queue1 剩余消息: {queue1.qsize()}")
